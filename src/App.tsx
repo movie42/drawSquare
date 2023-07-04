@@ -1,52 +1,63 @@
 import { Layer, Rect, Stage } from "react-konva";
 import styled from "styled-components";
-import { squareArea } from "./utils/squareArea";
 
-interface SquareProps {
+import { KonvaEventObject } from "konva/lib/Node";
+
+interface Rect {
   width: number;
-  height: number;
   x: number;
   y: number;
-  fill: string;
+  height: number;
 }
-const Square = ({ width, height, x, y, fill }: SquareProps) => {
-  return (
-    <Rect width={width} height={height} x={x} y={y} fill={fill} draggable />
-  );
-};
-
 function App() {
-  const count = 21;
-  const { square, count: gcdCount } = squareArea(count);
+  function haveIntersection(r1: Rect, r2: Rect) {
+    return !(
+      r2.x > r1.x + r1.width ||
+      r2.x + r2.width < r1.x ||
+      r2.y > r1.y + r1.height ||
+      r2.y + r2.height < r1.y
+    );
+  }
+  const handleDragMove = (e: KonvaEventObject<DragEvent>) => {
+    const target = e.target;
+    const targetRect = e.target.getClientRect();
 
-  const width = (1000 / gcdCount) * 5;
-  const height = square / width;
-  // width가 1000을 넘어가면 안된다.
-  // y를 정렬할 수 있는 방법이 필요하다.
-
-  const squares = Array.from({ length: count })
-    .fill({
-      width: 0,
-      height: 0
-    })
-    .map((_, i) => {
-      const x = (width * i) % 1000;
-      const y = (height * i) % 600;
-      const fill = ["#dd00ff", "#ffdd00", "#00ddff"];
-
-      const random = fill[Math.round(Math.random() * 10) % 3];
-      return { width, height, x, y, fill: random };
+    e.currentTarget.getLayer()?.children?.forEach((group) => {
+      const groupClientRect = group.getClientRect();
+      if (target === group) {
+        return;
+      }
+      if (haveIntersection(groupClientRect, targetRect)) {
+        group.setAttr("fill", "black");
+      } else {
+        group.setAttr("fill", "red");
+      }
     });
+  };
 
-  console.log(squares);
+  const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+    const target = e.target;
+    const targetRect = e.target.getClientRect();
 
+    e.currentTarget.getLayer()?.children?.forEach((group) => {
+      const groupClientRect = group.getClientRect();
+      if (target === group) {
+        return;
+      }
+      if (haveIntersection(groupClientRect, targetRect)) {
+        const calY = targetRect.y - groupClientRect.y - groupClientRect.height;
+        const calX = targetRect.x - groupClientRect.x - groupClientRect.width;
+        target.setAttrs({ x: targetRect.x - calX, y: targetRect.y - calY });
+      }
+    });
+  };
   return (
     <Container>
       <Stage width={1000} height={600}>
-        <Layer>
-          {squares.map(({ width, height, x, y, fill }) => (
-            <Square width={width} height={height} x={x} y={y} fill={fill} />
-          ))}
+        <Layer onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
+          <Rect draggable x={1} y={1} width={100} height={100} fill="green" />
+          <Rect draggable x={150} y={150} width={100} height={100} fill="red" />
+          <Rect draggable x={150} y={150} width={100} height={100} fill="red" />
         </Layer>
       </Stage>
     </Container>
